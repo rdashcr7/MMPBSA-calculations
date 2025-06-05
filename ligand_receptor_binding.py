@@ -68,11 +68,11 @@ with open(temp_receptor_initial,"w") as output:
 temperature = 298.0 * unit.kelvin
 pressure = 1.0 * unit.atmospheres
 collision_rate = 1.0 / unit.picoseconds
-timestep = 1.0 * unit.femtoseconds  
+timestep = 2.0 * unit.femtoseconds  
 nvt_steps = 2500000
 npt_steps = 100000000
 max_Iter = 1000
-sample_interval = 2500
+sample_interval = 1000
 n_samples = nvt_steps//sample_interval
 
 #%% create systems
