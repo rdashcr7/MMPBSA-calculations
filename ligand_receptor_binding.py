@@ -105,7 +105,7 @@ ligand_modeller.addSolvent(forcefield, model='tip3p',
 
 # incorporate forcefield in the ligand system
 ligand_system = forcefield.createSystem(ligand_modeller.topology, nonbondedMethod=LJPME,
-                                    nonbondedCutoff= 1*unit.nanometer,removeCMMotion=True,constraints=AllBonds
+                                    nonbondedCutoff= 1*unit.nanometer,removeCMMotion=True,constraints=app.AllBonds
                                     )
 
 # prepare receptor system
