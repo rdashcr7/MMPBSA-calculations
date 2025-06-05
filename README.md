@@ -17,11 +17,12 @@ ligand_receptor_binding.py – Python script to simulate solvated MD for the lig
 
 pdb2amber/ – Folder containing pdb2amber, a utility to generate AMBER-compatible topology files using OpenMM forcefields.
 
-What This Workflow Does
-MD Simulation
+What This Workflow Does -
+
+a) MD Simulation
 Runs a 50 ns NVT simulation for a receptor-ligand complex using OpenMM. The trajectory is written to complex_trajectory.dcd, and final structures are saved as PDB files. These final files are stripped of water and ions. These are dry pdb files.
 
-Topology Generation for MMPBSA
+b) Topology Generation for MMPBSA
 
 Uses pdb2amber and tleap to create:
 
@@ -32,7 +33,7 @@ complex_solvated.prmtop (solvated system for trajectory)
 Trajectory Conversion
 Converts .dcd trajectory to AMBER-readable .mdcrd format using cpptraj.
 
-MMPBSA Analysis
+c) MMPBSA Analysis
 Performs Poisson–Boltzmann (PB) binding energy calculations on the solvated trajectory using MMPBSA.py.
 
 🖥️ Prerequisites
@@ -48,22 +49,23 @@ Clone pdb2amber into your working directory by pasting this in the same director
 
 https://github.com/swillow/pdb2amber.git
 ⚙️ How to Run
-Update the paths in run_mmpbsa.slurm if needed (e.g., force field files, conda env path).
+Update the paths in run_mmpbsa.sh if needed (e.g., force field files, conda env path).
 
 Submit the job:
 
 sbatch run_mmpbsa.sh
 📦 Output Files
-binding_energy.dat: Final binding free energy output
+a) binding_energy.dat: Final binding free energy output
 
-complex_analysis.csv: Structural properties from the simulation (Rg, RMSD, distance, etc.)
+b) ligand_analysis.csv, receptor_analysis.csv, complex_analysis.csv: Structural properties from the simulation (Rg, RMSD, distance, etc.)
 
-.prmtop, .inpcrd, .mdcrd: AMBER input files
+c) .prmtop, .inpcrd, .mdcrd: AMBER input files
 
-complex_trajectory.dcd: Trajectory file from OpenMM
+d) complex_trajectory.dcd: Trajectory file from OpenMM
+
+e) pdb files of ligand, receptor and complex stripped of water and ions
 
 📌 Notes
-The receptor is assumed to be residues 1–98 and ligand 99–118. Adjust these masks in ante-MMPBSA.py and mmpbsa.in if needed.
 
 TIP3P water model is used.
 
