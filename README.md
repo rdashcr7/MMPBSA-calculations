@@ -54,7 +54,11 @@ Update the paths in run_mmpbsa.sh if needed (e.g., force field files, conda env 
 Submit the job:
 
 sbatch run_mmpbsa.sh
+
+
 📦 Output Files
+
+
 a) binding_energy.dat: Final binding free energy output
 
 b) ligand_analysis.csv, receptor_analysis.csv, complex_analysis.csv: Structural properties from the simulation (Rg, RMSD, distance, etc.)
