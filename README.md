@@ -19,9 +19,9 @@ pdb2amber/ – Folder containing pdb2amber, a utility to generate AMBER-compatib
 
 What This Workflow Does
 MD Simulation
-Runs a 50 ns NVT simulation for a receptor-ligand complex using OpenMM. The trajectory is written to complex_trajectory.dcd, and final structures are saved as PDB files.
+Runs a 50 ns NVT simulation for a receptor-ligand complex using OpenMM. The trajectory is written to complex_trajectory.dcd, and final structures are saved as PDB files. These final files are stripped of water and ions. These are dry pdb files.
 
-Topology Generation
+Topology Generation for MMPBSA
 
 Uses pdb2amber and tleap to create:
 
@@ -44,21 +44,15 @@ Python environment with:
 
 openmm, mdanalysis, numpy, scipy, parmed, etc.
 
-Clone pdb2amber into your working directory:
+Clone pdb2amber into your working directory by pasting this in the same directory as the slurm and python scripts:
 
-bash
-Copy
-Edit
-git clone https://github.com/swillow/pdb2amber
+https://github.com/swillow/pdb2amber.git
 ⚙️ How to Run
 Update the paths in run_mmpbsa.slurm if needed (e.g., force field files, conda env path).
 
 Submit the job:
 
-bash
-Copy
-Edit
-sbatch run_mmpbsa.slurm
+sbatch run_mmpbsa.sh
 📦 Output Files
 binding_energy.dat: Final binding free energy output
 
