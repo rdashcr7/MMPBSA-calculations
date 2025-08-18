@@ -86,7 +86,7 @@ Only PB solvation model is configured in mmpbsa.in, but GB can be easily added.
 
 📬 Contact
 
-For questions, feel free to open an issue or contact the author via email: rdash@email.sc.edu.
+For questions, feel free to open an issue or contact the authors via email: rdash@email.sc.edu, JABBARI@cec.sc.edu.
 
 
 
