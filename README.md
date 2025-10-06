@@ -10,33 +10,31 @@ run_mmpbsa.sh – Main SLURM script that performs:
 
 NVT MD simulation using OpenMM (via ligand_receptor_binding.py)
 
-Parameter/topology file generation via pdb2amber and tleap
+NPT MD simulation using openMM (via ligand_receptor_binding.py)
 
-Trajectory conversion via cpptraj
+Parameter/topology file generation via ParmEd
+
+Trajectory conversion via mdconvert
 
 MMPBSA free energy calculation
 
 ligand_receptor_binding.py – Python script to simulate solvated MD for the ligand–receptor complex and output the trajectory.
 
-pdb2amber/ – Folder containing pdb2amber, a utility to generate AMBER-compatible topology files using OpenMM forcefields.
-
 What This Workflow Does -
 
 a) MD Simulation
 
-Runs a 50 ns NVT simulation for a receptor-ligand complex using OpenMM. The trajectory is written to complex_trajectory.dcd, and final structures are saved as PDB files. These final files are stripped of water and ions. These are dry pdb files.
+Runs a 50 ns NVT and a 50 ns NPT simulation for a receptor-ligand complex using OpenMM. The NPT trajectory is written to complex_trajectory.dcd, and final structures are saved as PDB files. These final files are stripped of water and ions. These are dry pdb files. The trajectory files if also stripped off water and ions and saved as trajectory_dry.dcd. 
 
 b) Topology Generation for MMPBSA
 
-Uses pdb2amber and tleap to create:
+Uses ParmEd and ante-MMPBSA.py to create:
 
 complex.prmtop, receptor.prmtop, ligand.prmtop (dry systems)
 
-complex_solvated.prmtop (solvated system for trajectory)
-
 Trajectory Conversion
 
-Converts .dcd trajectory to AMBER-readable .mdcrd format using cpptraj.
+Converts .dcd trajectory to AMBER-readable .nc format using mdconvert.
 
 c) MMPBSA Analysis
 
@@ -50,11 +48,7 @@ AmberTools installed (including MMPBSA.py, cpptraj, ante-MMPBSA.py)
 
 Python environment with:
 
-openmm, mdanalysis, numpy, scipy, parmed, etc.
-
-Clone pdb2amber into your working directory by pasting this in the same directory as the slurm and python scripts:
-
-https://github.com/swillow/pdb2amber.git
+openmm, mdanalysis, numpy, scipy, parmed, openmmtools etc.
 
 ⚙️ How to Run
 
@@ -68,15 +62,17 @@ sbatch run_mmpbsa.sh
 📦 Output Files
 
 
-a) binding_energy.dat: Final binding free energy output
+a) binding_energy.dat and similar .dat files for every 10 ns interval: Final binding free energy output
 
-b) ligand_analysis.csv, receptor_analysis.csv, complex_analysis.csv: Structural properties from the simulation (Rg, RMSD, distance, etc.)
+b) ligand_analysis.csv, receptor_analysis.csv, complex_analysis.csv: Structural properties from the NVT simulation (Rg, RMSD, distance, etc.)
 
-c) .prmtop, .inpcrd, .mdcrd: AMBER input files
+c) ligand_analysis_npt.csv, receptor_analysis_npt.csv, complex_analysis_npt.csv: Structural properties from the NPT simulation (Rg, RMSD, distance, etc.)
 
-d) complex_trajectory.dcd: Trajectory file from OpenMM
+d) .prmtop, .inpcrd, .nc: AMBER input files
 
-e) pdb files of ligand, receptor and complex stripped of water and ions
+e) complex_trajectory.dcd: Trajectory file from OpenMM
+
+f) pdb files of ligand, receptor and complex stripped of water and ions
 
 📌 Notes
 
