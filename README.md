@@ -20,6 +20,8 @@ MMPBSA free energy calculation
 
 ligand_receptor_binding.py – Python script to simulate solvated MD for the ligand–receptor complex and output the trajectory.
 
+fix_traj.py - Python script to generate .prmtop files of complex
+
 What This Workflow Does -
 
 a) MD Simulation
