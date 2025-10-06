@@ -210,7 +210,7 @@ for i in range(n_samples):
 
     current_rmsd = rms.rmsd(ca1.positions, ca_current.positions, center=True, superposition=True)
     current_rg = radius_of_gyration(ca_current)
-    current_ete = math.dist(ca_current.positions[0],ca_current.positions[19])
+    current_ete = math.dist(ca_current.positions[0],ca_current.positions[-1])
     current_energy = ligand_simulation.context.getState(getEnergy=True).getPotentialEnergy()
     
     bond_energy = ligand_simulation.context.getState(
@@ -265,6 +265,119 @@ ligand_df.to_csv("ligand_analysis.csv", index=False)
 # Save structure
 with open("NVT_ligand.pdb", "w") as output:
     PDBFile.writeFile(ligand_modeller.topology, ligand_positions, output)
+
+#%% NPT run of the ligand
+
+nvt_state = ligand_simulation.context.getState(getPositions=True, getVelocities=True)
+nvt_positions = nvt_state.getPositions()
+nvt_velocities = nvt_state.getVelocities()
+
+ligand_system_unconstrained.addForce(MonteCarloBarostat(pressure, temperature))
+ligand_integrator_npt = LangevinMiddleIntegrator(temperature, collision_rate, timestep)
+ligand_simulation_npt = Simulation(
+    ligand_modeller.topology,
+    ligand_system_unconstrained,
+    ligand_integrator_npt
+)
+
+ligand_simulation_npt.context.setPositions(nvt_positions)
+ligand_simulation_npt.context.setVelocities(nvt_velocities)
+ligand_npt_time_points = []
+ligand_npt_time_ns = []
+ligand_npt_energy_values = []
+ligand_npt_volume_values = []
+ligand_npt_rmsd_values = []
+ligand_npt_rg_values = []
+ligand_npt_ete_values = []
+ligand_npt_bond_values = []
+ligand_npt_nonbonded_values = []
+ligand_npt_torsion_values = []
+ligand_npt_angle_values = []
+
+for i in range(ligand_n_samples):
+    ligand_simulation_npt.step(sample_interval)
+
+    # saving a temporary file
+    temp_file ="temp_sample.pdb"
+    ligand_positions = ligand_simulation_npt.context.getState(getPositions = True).getPositions()
+    with open(temp_file, "w") as output:
+        PDBFile.writeFile(ligand_modeller.topology, ligand_positions, output)    
+
+    u_current = mda.Universe(temp_file)
+    ca_current = u_current.select_atoms("name CA")
+
+    state = ligand_simulation_npt.context.getState(getEnergy=True, getPositions=True, enforcePeriodicBox=True)
+    current_rmsd = rms.rmsd(ca1.positions, ca_current.positions, center=True, superposition=True)
+    current_rg = radius_of_gyration(ca_current)
+    current_ete = math.dist(ca_current.positions[0],ca_current.positions[-1])
+    current_energy = ligand_simulation_npt.context.getState(getEnergy=True).getPotentialEnergy()
+    box_vectors = state.getPeriodicBoxVectors()
+    volume = (box_vectors[0][0]*box_vectors[1][1]*box_vectors[2][2]).value_in_unit(unit.nanometer**3)
+    
+    bond_energy = ligand_simulation_npt.context.getState(
+        getEnergy=True, 
+        groups={0}
+    ).getPotentialEnergy()
+    
+    nonbonded_energy = ligand_simulation_npt.context.getState(
+        getEnergy=True, 
+        groups={1}
+    ).getPotentialEnergy()
+    
+    torsion_energy = ligand_simulation_npt.context.getState(
+        getEnergy=True, 
+        groups={2}
+    ).getPotentialEnergy()
+    
+    angle_energy = ligand_simulation_npt.context.getState(
+        getEnergy=True, 
+        groups={3}
+    ).getPotentialEnergy()
+
+    current_step = (i + 1) * sample_interval
+    current_time = current_step*2*(10**(-6))
+    
+    ligand_npt_time_points.append(current_step)
+    ligand_npt_time_ns.append(current_time) 
+    ligand_npt_rmsd_values.append(current_rmsd)
+    ligand_npt_rg_values.append(current_rg)
+    ligand_npt_ete_values.append(current_ete)
+    ligand_npt_energy_values.append(current_energy)
+    ligand_npt_bond_values.append(bond_energy)
+    ligand_npt_nonbonded_values.append(nonbonded_energy)
+    ligand_npt_torsion_values.append(torsion_energy)
+    ligand_npt_angle_values.append(angle_energy)
+    ligand_npt_volume_values.append(volume)
+
+ligand_npt_df = pd.DataFrame({
+    "Time (ns)":ligand_npt_time_ns,
+    "Step": ligand_npt_time_points,
+    "RMSD (Angstrom)": ligand_npt_rmsd_values,
+    "Rg (Angstrom)": ligand_npt_rg_values,
+    "End to End Distance (Angstrom)": ligand_npt_ete_values,
+    "Potential Energy (kJ/mol)": ligand_npt_energy_values,
+    "Bond Energy (kJ/mol)": ligand_npt_bond_values,
+    "Angle Energy (kJ/mol)": ligand_npt_angle_values,
+    "Torsion Energy (kJ/mol)": ligand_npt_torsion_values,
+    "Nonbonded Energy (kJ/mol)": ligand_npt_nonbonded_values,
+    "Box Volume (nm^3)": ligand_npt_volume_values
+})
+
+ligand_npt_df.to_csv("ligand_analysis_NPT.csv", index=False)
+# Save final NPT structure
+ligand_positions_npt = ligand_simulation_npt.context.getState(getPositions=True).getPositions()
+with open("NPT_ligand.pdb", "w") as output:
+    PDBFile.writeFile(ligand_modeller.topology, ligand_positions_npt, output)
+
+ligand_stripped = Modeller(ligand_modeller.topology, ligand_positions)
+ligand_stripped.delete([res for res in ligand_stripped.topology.residues()
+                          if res.name in ("HOH", "WAT", "Na+", "Cl-", "NA", "CL")])
+
+
+with open("NPT_ligand_dry.pdb", "w") as output:
+    PDBFile.writeFile(ligand_stripped.topology,
+                      ligand_stripped.positions,
+                      output)
 
 #%% Minimize receptor
 
@@ -387,6 +500,119 @@ receptor_df.to_csv("receptor_analysis.csv", index=False)
 with open("NVT_receptor.pdb", "w") as output:
     PDBFile.writeFile(receptor_modeller.topology, receptor_positions, output)
 
+#%% NPT run of the receptor
+
+receptor_system.addForce(MonteCarloBarostat(pressure, temperature))
+receptor_integrator_npt = LangevinMiddleIntegrator(temperature, collision_rate, timestep)
+receptor_simulation_npt = Simulation(
+    receptor_modeller.topology,
+    receptor_system,
+    receptor_integrator_npt
+)
+
+receptor_simulation_npt.context.setPositions(receptor_positions)
+receptor_simulation_npt.context.setVelocitiesToTemperature(temperature)
+
+receptor_npt_time_points = []
+receptor_npt_time_ns = []
+receptor_npt_energy_values = []
+receptor_npt_volume_values = []
+receptor_npt_rmsd_values = []
+receptor_npt_rg_values = []
+receptor_npt_ete_values = []
+receptor_npt_bond_values = []
+receptor_npt_nonbonded_values = []
+receptor_npt_torsion_values = []
+receptor_npt_angle_values = []
+
+for i in range(25):
+    receptor_simulation_npt.step(sample_interval)
+
+    # Save positions
+    temp_file = "temp_sample.pdb"
+    receptor_positions = receptor_simulation_npt.context.getState(getPositions=True).getPositions()
+    with open(temp_file, "w") as output:
+        PDBFile.writeFile(receptor_modeller.topology, receptor_positions, output)
+
+    u_current = mda.Universe(temp_file)
+    ca_current = u_current.select_atoms("name CA")
+
+    state = receptor_simulation_npt.context.getState(getEnergy=True, getPositions=True, enforcePeriodicBox=True)
+    current_energy = state.getPotentialEnergy()
+    box_vectors = state.getPeriodicBoxVectors()
+    volume = (box_vectors[0][0]*box_vectors[1][1]*box_vectors[2][2]).value_in_unit(unit.nanometer**3)
+
+    current_rmsd = rms.rmsd(ca1.positions, ca_current.positions, center=True, superposition=True)
+    current_rg = radius_of_gyration(ca_current)
+    current_ete = math.dist(ca_current.positions[0],ca_current.positions[19])
+    current_energy = receptor_simulation_npt.context.getState(getEnergy=True).getPotentialEnergy()
+
+    bond_energy = receptor_simulation_npt.context.getState(
+        getEnergy=True, 
+        groups={0}
+    ).getPotentialEnergy()
+    
+    nonbonded_energy = receptor_simulation_npt.context.getState(
+        getEnergy=True, 
+        groups={1}
+    ).getPotentialEnergy()
+    
+    torsion_energy = receptor_simulation_npt.context.getState(
+        getEnergy=True, 
+        groups={2}
+    ).getPotentialEnergy()
+    
+    angle_energy = receptor_simulation_npt.context.getState(
+        getEnergy=True, 
+        groups={3}
+    ).getPotentialEnergy()
+
+
+    current_step = (i + 1) * sample_interval
+    current_time = current_step*2*(10**(-6))
+
+    receptor_npt_time_points.append(current_step)
+    receptor_npt_time_ns.append(current_time)
+    receptor_npt_rmsd_values.append(current_rmsd)
+    receptor_npt_rg_values.append(current_rg)
+    receptor_npt_ete_values.append(current_ete)
+    receptor_npt_energy_values.append(current_energy)
+    receptor_npt_bond_values.append(bond_energy)
+    receptor_npt_nonbonded_values.append(nonbonded_energy)
+    receptor_npt_torsion_values.append(torsion_energy)
+    receptor_npt_angle_values.append(angle_energy)
+    receptor_npt_volume_values.append(volume)
+
+
+receptor_npt_df = pd.DataFrame({
+    "Time (ns)":receptor_npt_time_ns,
+    "Step": receptor_npt_time_points,
+    "RMSD (Angstrom)": receptor_npt_rmsd_values,
+    "Rg (Angstrom)": receptor_npt_rg_values,
+    "End to End Distance (Angstrom)": receptor_npt_ete_values,
+    "Potential Energy (kJ/mol)": receptor_npt_energy_values,
+    "Bond Energy (kJ/mol)": receptor_npt_bond_values,
+    "Angle Energy (kJ/mol)": receptor_npt_angle_values,
+    "Torsion Energy (kJ/mol)": receptor_npt_torsion_values,
+    "Nonbonded Energy (kJ/mol)": receptor_npt_nonbonded_values,
+    "Box Volume (nm^3)": receptor_npt_volume_values
+})
+receptor_npt_df.to_csv("receptor_analysis_NPT.csv", index=False)
+
+# Save final NPT structure
+receptor_positions_npt = receptor_simulation_npt.context.getState(getPositions=True).getPositions()
+with open("NPT_receptor.pdb", "w") as output:
+    PDBFile.writeFile(receptor_modeller.topology, receptor_positions_npt, output)
+
+receptor_stripped = Modeller(receptor_modeller.topology, receptor_positions)
+receptor_stripped.delete([res for res in receptor_stripped.topology.residues()
+                          if res.name in ("HOH", "WAT", "Na+", "Cl-", "NA", "CL")])
+
+
+with open("NPT_receptor_dry.pdb", "w") as output:
+    PDBFile.writeFile(receptor_stripped.topology,
+                      receptor_stripped.positions,
+                      output)
 
 #%% Preparing the complex
 
@@ -494,7 +720,7 @@ for i in range(n_samples):
     
     current_rmsd = rms.rmsd(ca1.positions, ca_current.positions, center=True, superposition=True)
     current_rg = radius_of_gyration(ca_current)
-    current_ete = math.dist(ca_current.positions[0],ca_current.positions[19])
+    current_ete = math.dist(ca_current.positions[0],ca_current.positions[-1])
     current_energy = complex_simulation.context.getState(getEnergy=True).getPotentialEnergy()
     
     bond_energy = complex_simulation.context.getState(
@@ -548,22 +774,9 @@ complex_df = pd.DataFrame({
 
 complex_df.to_csv("complex_analysis.csv", index=False)
 
-# Add reporters to the original simulation
-complex_simulation.reporters.append(app.DCDReporter('complex_trajectory.dcd', 1))
-complex_simulation.reporters.append(app.StateDataReporter('output.log', 1, step=True, potentialEnergy=True, temperature=True))
-
-# Run 1 more step to flush the reporters (if needed)
-complex_simulation.step(250000000)
-
-# Save the final structure as NVT_complex.pdb AFTER trajectory is written
+# Save structure
 with open("NVT_complex.pdb", "w") as output:
-    complex_positions = complex_simulation.context.getState(getPositions=True).getPositions()
     PDBFile.writeFile(complex_modeller.topology, complex_positions, output)
-
-print("NVT complete. DCD trajectory and final PDB written as 'complex_trajectory.dcd' and 'NVT_complex.pdb'.")
-
-
-# strip NVT files of water and ions
 
 complex_stripped = Modeller(complex_modeller.topology, complex_positions)
 complex_stripped.delete([res for res in complex_stripped.topology.residues()
@@ -575,9 +788,136 @@ with open("NVT_complex_dry.pdb", "w") as output:
                       complex_stripped.positions,
                       output)
 
-U = mda.Universe("NVT_complex_dry.pdb")
-receptor_dry = U.select_atoms("segid A")
-ligand_dry = U.select_atoms("segid B")
 
-receptor_dry.write("NVT_receptor_dry.pdb")
-ligand_dry.write("NVT_ligand_dry.pdb")
+#%% NPT run of the complex
+
+nvt_state = complex_simulation.context.getState(getPositions=True, getVelocities=True)
+nvt_positions = nvt_state.getPositions()
+nvt_velocities = nvt_state.getVelocities()
+
+complex_system.addForce(MonteCarloBarostat(pressure, temperature))
+complex_integrator_npt = LangevinMiddleIntegrator(temperature, collision_rate, timestep)
+complex_simulation_npt = Simulation(
+    complex_modeller.topology,
+    complex_system,
+    complex_integrator_npt
+)
+
+complex_simulation_npt.context.setPositions(nvt_positions)
+complex_simulation_npt.context.setVelocities(nvt_velocities)
+
+complex_simulation_npt.reporters.append(
+    app.DCDReporter('complex_trajectory.dcd', sample_interval)  
+)
+complex_simulation_npt.reporters.append(
+    app.StateDataReporter('output.log', sample_interval, step=True, potentialEnergy=True, temperature=True)
+)
+
+complex_npt_time_points = []
+complex_npt_time_ns = []
+complex_npt_rmsd_values = []
+complex_npt_rg_values = []
+complex_npt_ete_values = []
+complex_npt_energy_values = []
+complex_npt_bond_values = []
+complex_npt_angle_values = []
+complex_npt_torsion_values = []
+complex_npt_nonbonded_values = []
+complex_npt_volume_values = []
+ligand_receptor_distance_npt = []
+
+u_ref = mda.Universe("initial_complex.pdb")
+ca_ref = u_ref.select_atoms("segid B and name CA")
+
+for i in range(n_samples):
+    complex_simulation_npt.step(sample_interval)
+
+    # Save positions
+    temp_file = "temp_sample.pdb"
+    complex_positions_npt = complex_simulation_npt.context.getState(getPositions=True).getPositions()
+    with open(temp_file, "w") as output:
+        PDBFile.writeFile(complex_modeller.topology, complex_positions_npt, output)
+
+    u_current = mda.Universe(temp_file)
+    ca_current = u_current.select_atoms("segid B and name CA")
+    ca_receptor = u_current.select_atoms("segid A and name CA")
+
+    # COM distance between receptor and ligand
+    lig_com = np.mean(ca_current.positions, axis=0)
+    rec_com = np.mean(ca_receptor.positions, axis=0)
+    current_dist = math.dist(lig_com, rec_com)
+
+    # Structural metrics
+    current_rmsd = rms.rmsd(ca_ref.positions, ca_current.positions, center=True, superposition=True)
+    current_rg = radius_of_gyration(ca_current)
+    current_ete = math.dist(ca_current.positions[0], ca_current.positions[-1])
+
+    # Energies
+    state = complex_simulation_npt.context.getState(getEnergy=True, getPositions=True, enforcePeriodicBox=True)
+    current_energy = state.getPotentialEnergy()
+    bond_energy = complex_simulation_npt.context.getState(getEnergy=True, groups={0}).getPotentialEnergy()
+    nonbonded_energy = complex_simulation_npt.context.getState(getEnergy=True, groups={1}).getPotentialEnergy()
+    torsion_energy = complex_simulation_npt.context.getState(getEnergy=True, groups={2}).getPotentialEnergy()
+    angle_energy = complex_simulation_npt.context.getState(getEnergy=True, groups={3}).getPotentialEnergy()
+
+    # Volume
+    box_vectors = state.getPeriodicBoxVectors()
+    volume = (box_vectors[0][0]*box_vectors[1][1]*box_vectors[2][2]).value_in_unit(unit.nanometer**3)
+
+    # Timing
+    current_step = (i + 1) * sample_interval
+    current_time = current_step*2*(10**(-6))
+
+    # Append to lists
+    complex_npt_time_points.append(current_step)
+    complex_npt_time_ns.append(current_time)
+    complex_npt_rmsd_values.append(current_rmsd)
+    complex_npt_rg_values.append(current_rg)
+    complex_npt_ete_values.append(current_ete)
+    complex_npt_energy_values.append(current_energy)
+    complex_npt_bond_values.append(bond_energy)
+    complex_npt_nonbonded_values.append(nonbonded_energy)
+    complex_npt_torsion_values.append(torsion_energy)
+    complex_npt_angle_values.append(angle_energy)
+    complex_npt_volume_values.append(volume)
+    ligand_receptor_distance_npt.append(current_dist)
+
+# Save NPT analysis
+complex_npt_df = pd.DataFrame({
+    "Time (ns)": complex_npt_time_ns,
+    "Step": complex_npt_time_points,
+    "Ligand Receptor COM distance (Angstrom)": ligand_receptor_distance_npt,
+    "RMSD (Angstrom)": complex_npt_rmsd_values,
+    "Rg (Angstrom)": complex_npt_rg_values,
+    "End-to-End Distance (Angstrom)": complex_npt_ete_values,
+    "Potential Energy (kJ/mol)": complex_npt_energy_values,
+    "Bond Energy (kJ/mol)": complex_npt_bond_values,
+    "Angle Energy (kJ/mol)": complex_npt_angle_values,
+    "Torsion Energy (kJ/mol)": complex_npt_torsion_values,
+    "Nonbonded Energy (kJ/mol)": complex_npt_nonbonded_values,
+    "Box Volume (nm^3)": complex_npt_volume_values
+})
+complex_npt_df.to_csv("complex_analysis_NPT.csv", index=False)
+
+# Save final NPT structure
+with open("NPT_complex.pdb", "w") as output:
+    PDBFile.writeFile(complex_modeller.topology, complex_positions_npt, output)
+
+
+# strip pdb and trajectory files of water and ions
+
+traj = md.load_dcd("complex_trajectory.dcd", top="NPT_complex.pdb")
+keep_atoms = traj.topology.select("not resname HOH CL NA")
+traj_dry = traj.atom_slice(keep_atoms)
+traj_dry.save("trajectory_dry.dcd")
+
+
+complex_stripped = Modeller(complex_modeller.topology, complex_positions_npt)
+complex_stripped.delete([res for res in complex_stripped.topology.residues()
+                          if res.name in ("HOH", "WAT", "Na+", "Cl-", "NA", "CL")])
+
+
+with open("NPT_complex_dry.pdb", "w") as output:
+    PDBFile.writeFile(complex_stripped.topology,
+                      complex_stripped.positions,
+                      output)
