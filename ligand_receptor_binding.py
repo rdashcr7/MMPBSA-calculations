@@ -87,11 +87,10 @@ ligand_modeller = Modeller(ligand_pdb.topology, ligand_pdb.positions)
 # displace atom positions slightly
 ligand_positions = np.array(ligand_modeller.positions.value_in_unit((nanometer)))
 
-# magnitude of displacement
-scale = 0.1  # 0.1 nanometers = 1 Å
+# random displacement
+scale = 0.1
 noise = np.random.normal(scale=scale, size=ligand_positions.shape)
 
-# Apply the random displacement
 ligand_positions_randomized = ligand_positions + noise
 
 ligand_modeller.positions = ligand_positions_randomized * unit.nanometers
