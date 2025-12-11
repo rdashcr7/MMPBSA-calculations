@@ -29,8 +29,7 @@ from simtk.openmm import LangevinIntegrator, LocalEnergyMinimizer
 from simtk.openmm.app import Simulation
 
     
-#%% Enter the ligand file, the receptor file, the forcefield file and the water model files
-
+#%% Enter the ligand file, the receptor file, the forcefield file and the water model file
 ligand_file = "Ligand.pdb"
 receptor_file = "Receptor.pdb"
 forcefield_file = "Forcefield_files/amber14-all.xml"
@@ -62,9 +61,7 @@ temp_receptor_initial = "initial_receptor.pdb"
 with open(temp_receptor_initial,"w") as output:
     PDBFile.writeFile(receptor_fixer.topology, receptor_fixer.positions, output)
     
-
 #%% Enter the Simulation parameters
-
 temperature = 298.0 * unit.kelvin
 pressure = 1.0 * unit.atmospheres
 collision_rate = 1.0 / unit.picoseconds
@@ -76,9 +73,7 @@ sample_interval = 1000
 n_samples = nvt_steps//sample_interval
 
 #%% create systems
-
 forcefield = ForceField(forcefield_file, water_model)
-
 
 # prepare ligand system
 ligand_pdb = PDBFile("initial_ligand.pdb")
@@ -101,7 +96,6 @@ ligand_modeller.addSolvent(forcefield, model='tip3p',
                         padding=1.0*unit.nanometer
                        )
 
-
 # incorporate forcefield in the ligand system
 ligand_system = forcefield.createSystem(ligand_modeller.topology, nonbondedMethod=LJPME,
                                     nonbondedCutoff= 1*unit.nanometer,removeCMMotion=True,constraints=app.AllBonds
@@ -122,7 +116,6 @@ receptor_system = forcefield.createSystem(receptor_modeller.topology, nonbondedM
                                     )
 
 #%% Minimize ligand with constrained bonds
-
 ligand_integrator = LangevinMiddleIntegrator(temperature,collision_rate,timestep)
 ligand_simulation = Simulation(ligand_modeller.topology, ligand_system, ligand_integrator)
 ligand_simulation.context.setPositions(ligand_modeller.positions)
@@ -141,13 +134,11 @@ with open(temp_minimized_ligand_file, "w") as output:
     PDBFile.writeFile(ligand_modeller.topology, ligand_positions,output)
     
 def radius_of_gyration(atoms):
-    """Calculate the radius of gyration for a set of atoms."""
     positions = atoms.positions
     center_of_mass = atoms.center_of_mass()
     squared_distances = np.sum((positions - center_of_mass) ** 2, axis=1)
     rg = np.sqrt(np.mean(squared_distances))
     return rg
-
 
 #%% Minimize ligand again with NO bond constraints
 
@@ -172,7 +163,6 @@ with open(temp_minimized_ligand_file_unconstrained, "w") as output:
 for i, f in enumerate(ligand_system_unconstrained.getForces()):
     f.setForceGroup(i)
     
-
 ligand_integrator_nvt = LangevinMiddleIntegrator(temperature, collision_rate, timestep)
 ligand_simulation = Simulation(
     ligand_modeller.topology, 
@@ -198,7 +188,6 @@ ligand_nonbonded_values = []
 for i in range(n_samples):
     ligand_simulation.step(sample_interval)
 
-    # Save positions
     temp_file = "temp_sample.pdb"
     ligand_positions = ligand_simulation.context.getState(getPositions=True).getPositions()
     with open(temp_file, "w") as output:
@@ -266,7 +255,6 @@ with open("NVT_ligand.pdb", "w") as output:
     PDBFile.writeFile(ligand_modeller.topology, ligand_positions, output)
 
 #%% NPT run of the ligand
-
 nvt_state = ligand_simulation.context.getState(getPositions=True, getVelocities=True)
 nvt_positions = nvt_state.getPositions()
 nvt_velocities = nvt_state.getVelocities()
