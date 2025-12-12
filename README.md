@@ -1,95 +1,158 @@
-# MMPBSA-calculations
+📘 MMPBSA-Calculations
+🧬 Overview
+
+This repository provides an automated workflow for estimating binding free energies (ΔG) between a ligand and a receptor using molecular dynamics with OpenMM and MMPBSA.py from AmberTools. It integrates simulation, topology generation, trajectory processing, and binding energy calculation in a SLURM-friendly pipeline.
+
+In addition to scripts for production workflows, the repository includes an interactive Jupyter notebook for visualization and exploratory analysis.
+
+🗂️ Repository Contents
+File / Script	Purpose
+run_MMPBSA.sh	Main SLURM script to run MD simulations and MMPBSA workflow
+ligand_receptor_binding.py	Python script for setting up and running solvated MD trajectories
+fix_traj.py	Generates dry topology files (*.prmtop) from MD outputs
+Animation.ipynb	Jupyter notebook for trajectory visualization and binding analysis
+README.md	This documentation
+
+✨ Note: The Jupyter notebook is part of the analysis layer and is useful for interactive inspection of results (animations). 
+GitHub
+
+🚀 Features & Workflow
+
+This pipeline supports the following stages:
+
+1. Molecular Dynamics Simulation
+
+Runs energy-minimization and dynamics using OpenMM
+
+Produces:
+
+complex_trajectory.dcd — full NPT trajectory
+
+Stripped PDB files (no solvent/ions)
+
+Dry stripped trajectory (trajectory_dry.dcd) 
+GitHub
+
+2. Topology Generation
+
+Uses ParmEd and ante-MMPBSA.py
+
+Generates:
+
+complex.prmtop
+
+receptor.prmtop
+
+ligand.prmtop
+(for the dry systems) 
+GitHub
+
+3. Trajectory Conversion
+
+Converts DCD to Amber-compatible NetCDF .nc format using mdconvert 
+GitHub
+
+4. MMPBSA.py Free Energy Calculation
+
+Runs Poisson–Boltzmann (PB) energy estimation
+
+Optional Generalized Born (GB) support available by editing the input file mmpbsa.in 
+GitHub
+
+📊 Jupyter Notebook — Animation.ipynb
+
+The included notebook provides additional capabilities:
+
+Interactive trajectory animation
+
+Plotting and comparison of structural metrics
+
+Visual inspection of simulations prior to energy analysis
+
+You can run this notebook locally with:
+
+jupyter notebook Animation.ipynb
 
 
-🧬 ΔG Binding Free Energy Calculation Using OpenMM and MMPBSA.py
-This repository provides a SLURM-compatible workflow for calculating the binding free energy (ΔG) between a ligand and a receptor using the MMPBSA.py tool from the AMBER suite. It integrates OpenMM-based molecular dynamics to perform simulations and generates input files automatically for MMPBSA analysis.
-
-📁 Repository Contents
-
-run_mmpbsa.sh – Main SLURM script that performs:
-
-NVT MD simulation using OpenMM (via ligand_receptor_binding.py)
-
-NPT MD simulation using openMM (via ligand_receptor_binding.py)
-
-Parameter/topology file generation via ParmEd
-
-Trajectory conversion via mdconvert
-
-MMPBSA free energy calculation
-
-ligand_receptor_binding.py – Python script to simulate solvated MD for the ligand–receptor complex and output the trajectory.
-
-fix_traj.py - Python script to generate .prmtop files of complex
-
-What This Workflow Does -
-
-a) MD Simulation
-
-Runs a 50 ns NVT and a 50 ns NPT simulation for a receptor-ligand complex using OpenMM. The NPT trajectory is written to complex_trajectory.dcd, and final structures are saved as PDB files. These final files are stripped of water and ions. These are dry pdb files. The trajectory files if also stripped off water and ions and saved as trajectory_dry.dcd. 
-
-b) Topology Generation for MMPBSA
-
-Uses ParmEd and ante-MMPBSA.py to create:
-
-complex.prmtop, receptor.prmtop, ligand.prmtop (dry systems)
-
-Trajectory Conversion
-
-Converts .dcd trajectory to AMBER-readable .nc format using mdconvert.
-
-c) MMPBSA Analysis
-
-Performs Poisson–Boltzmann (PB) binding energy calculations on the solvated trajectory using MMPBSA.py.
+Since notebooks are especially helpful for interpretation and debugging, this file sits outside the SLURM workflow but complements it by enabling interactivity. 
+GitHub
 
 🖥️ Prerequisites
 
+Ensure the following are available:
+
+Hardware
+
 HPC cluster with GPU access
 
-AmberTools installed (including MMPBSA.py, cpptraj, ante-MMPBSA.py)
+Software
 
-Python environment with:
+AmberTools (with MMPBSA.py, cpptraj, ante-MMPBSA.py)
 
-openmm, mdanalysis, numpy, scipy, parmed, openmmtools etc.
+Python with:
+
+openmm
+
+parmed
+
+mdanalysis
+
+numpy, scipy
+
+openmmtools
+
+(Optional) notebook dependencies for Jupyter
 
 ⚙️ How to Run
+1) Configure Paths
 
-Update the paths in run_mmpbsa.sh if needed (e.g., force field files, conda env path).
+Update run_MMPBSA.sh:
 
-Submit the job:
+Python environment
 
-sbatch run_mmpbsa.sh
+Force field locations
 
+2) Submit SLURM Job
+sbatch run_MMPBSA.sh
 
-📦 Output Files
+📦 Output Summary
+Binding Energy Results
 
+binding_energy.dat and such files for each block of the analysis
+(e.g., every 10 ns)
 
-a) binding_energy.dat and similar .dat files for every 10 ns interval: Final binding free energy output
+Structural Metrics
 
-b) ligand_analysis.csv, receptor_analysis.csv, complex_analysis.csv: Structural properties from the NVT simulation (Rg, RMSD, distance, etc.)
+ligand_analysis*.csv, receptor_analysis*.csv, complex_analysis*.csv
 
-c) ligand_analysis_npt.csv, receptor_analysis_npt.csv, complex_analysis_npt.csv: Structural properties from the NPT simulation (Rg, RMSD, distance, etc.)
+RMSD
 
-d) .prmtop, .inpcrd, .nc: AMBER input files
+Radius of gyration
 
-e) complex_trajectory.dcd: Trajectory file from OpenMM
+Distance plots
 
-f) pdb files of ligand, receptor and complex stripped of water and ions
+Amber Inputs
+
+.prmtop, .inpcrd, .nc files
+
+Trajectories
+
+Full and stripped trajectories (.dcd, .nc)
+
+Dry PDBs of ligand, receptor, and complex
 
 📌 Notes
 
-TIP3P water model is used.
+TIP3P water used by default
 
-Only PB solvation model is configured in mmpbsa.in, but GB can be easily added.
+Only PB solvation configured, GB is easily added
+
+Notebook assistance for post-analysis
 
 📬 Contact
 
-For questions, feel free to open an issue or contact the authors via email: rdash@email.sc.edu, JABBARI@cec.sc.edu.
+For questions or suggestions, please open an issue or reach out:
 
+🧑‍💻 rdash@email.sc.edu
 
-
-
-
-
-
-
+🧪 JABBARI@cec.sc.edu
